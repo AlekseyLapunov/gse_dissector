@@ -113,6 +113,7 @@ static int dissect_gse(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void
         col_append_str(pinfo->cinfo, COL_INFO, " ");
         return new_off;
     } else {
+
         if (BIT_IS_CLEAR(gse_hdr, GSE_HDR_START_POS) || BIT_IS_CLEAR(gse_hdr, GSE_HDR_STOP_POS)) {
 
             proto_tree_add_item(gse_tree, hf_gse_fragid, tvb, cur_off + new_off, 1, ENC_BIG_ENDIAN);
@@ -155,15 +156,12 @@ static int dissect_gse(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void
                 if (BIT_IS_SET(gse_hdr, GSE_HDR_STOP_POS))
                     col_append_str(pinfo->cinfo, COL_INFO, "0 ");
             }
+            /*
             if (gse_proto < 0x0600 && gse_proto >= 0x100) {
-            	/* Only display optional extension headers */
-                /* TODO: needs to be tested */
-
-                /* TODO: implementation needs to be checked (len of ext-header??) */
-                proto_tree_add_item(gse_tree, hf_gse_exthdr, tvb, cur_off + new_off, 1, ENC_BIG_ENDIAN);
+            	  proto_tree_add_item(gse_tree, hf_gse_exthdr, tvb, cur_off + new_off, 1, ENC_BIG_ENDIAN);
 
                 new_off += 1;
-            }
+            } */
         }
         else
         {
@@ -174,7 +172,7 @@ static int dissect_gse(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void
         next_tvb = tvb_new_subset_remaining(tvb, cur_off + new_off);
 
         int full_dissection = 1;
-        
+
         if (full_dissection)
         {
             switch (gse_proto) {
@@ -199,10 +197,14 @@ static int dissect_gse(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void
         {
             if (BIT_IS_CLEAR(gse_hdr, GSE_HDR_START_POS) && BIT_IS_SET(gse_hdr, GSE_HDR_STOP_POS)) {
                 data_len = (gse_hdr & GSE_HDR_LENGTH_MASK) - (new_off - GSE_MINSIZE) - GSE_CRC32_LEN;
+
             } else
+            {
                 data_len = (gse_hdr & GSE_HDR_LENGTH_MASK) - (new_off - GSE_MINSIZE);
+            }
 
             proto_tree_add_item(gse_tree, hf_gse_data, tvb, cur_off + new_off, data_len, ENC_NA);
+
             new_off += data_len;
         }
 
@@ -212,7 +214,6 @@ static int dissect_gse(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void
             new_off += GSE_CRC32_LEN;
         }
     }
-
   return new_off;
 }
 
@@ -303,6 +304,7 @@ void proto_reg_handoff_gse(void)
 
     gse_handle = create_dissector_handle(dissect_gse, proto_gse);
     dissector_add_uint("ethertype", 0x2f16, gse_handle);
+    dissector_add_uint("udp.port", 5000, gse_handle);
     ip_handle = find_dissector("ip");
     ipv6_handle = find_dissector("ipv6");
 }
